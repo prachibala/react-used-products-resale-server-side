@@ -383,6 +383,39 @@ const run = async () => {
 
             res.send(createdOrder);
         });
+
+        // get user orders
+        app.get("/get-my-orders", async (req, res) => {
+            const email = req.query.email;
+
+            const orders = await orderCollection
+                .aggregate([
+                    {
+                        $match: {
+                            orderBy: email,
+                        },
+                    },
+                    {
+                        $lookup: {
+                            from: "products",
+                            localField: "product",
+                            foreignField: "_id",
+                            as: "product",
+                        },
+                    },
+                    {
+                        $lookup: {
+                            from: "users",
+                            localField: "orderBy",
+                            foreignField: "email",
+                            as: "orderBy",
+                        },
+                    },
+                ])
+                .toArray();
+
+            res.send(orders);
+        });
     } finally {
     }
 };
