@@ -311,6 +311,78 @@ const run = async () => {
 
             res.send(user);
         });
+
+        // update verification status
+        app.post("/update-verification-status/:id", async (req, res) => {
+            const id = req.params.id;
+
+            const updatedUser = await userCollection.updateOne(
+                {
+                    _id: ObjectId(id),
+                },
+                { $set: { verified: true } }
+            );
+
+            res.send(updatedUser);
+        });
+
+        // get buyers
+        app.get("/get-buyers", async (req, res) => {
+            const user = await userCollection
+                .find({
+                    userType: "buyer",
+                })
+                .toArray();
+
+            res.send(user);
+        });
+
+        // Delete user
+        app.delete("/delete-user/:id", async (req, res) => {
+            const id = req.params.id;
+
+            const user = await userCollection.findOne({ _id: ObjectId(id) });
+
+            if (user) {
+                const deletedProducts = await productCollection.deleteMany({
+                    createdBy: user.email,
+                });
+            }
+
+            const deletedUser = await userCollection.deleteOne({
+                _id: ObjectId(id),
+            });
+
+            res.send(deletedUser);
+        });
+
+        // create new order
+        app.post("/create-order/", async (req, res) => {
+            const order = {
+                product: ObjectId(req.body.product),
+                orderBy: req.body.orderBy,
+                phone: req.body.phone,
+                location: req.body.location,
+                seller: req.body.seller,
+            };
+
+            const existingOrder = await orderCollection.findOne({
+                orderBy: order.orderBy,
+            });
+
+            if (existingOrder) {
+                return res.send({
+                    message: "You have already booked this product",
+                });
+            }
+
+            const createdOrder = await orderCollection.insertOne({
+                ...order,
+                createdAt: new Date(),
+            });
+
+            res.send(createdOrder);
+        });
     } finally {
     }
 };
