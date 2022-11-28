@@ -223,6 +223,94 @@ const run = async () => {
             const products = await cursor.toArray();
             res.send(products);
         });
+
+        // get recent products
+        app.get("/recent-products", async (req, res) => {
+            const cursor = productCollection.aggregate([
+                {
+                    $match: {
+                        advertiseStatus: "published",
+                    },
+                },
+                {
+                    $lookup: {
+                        from: "categories",
+                        localField: "category",
+                        foreignField: "_id",
+                        as: "category",
+                    },
+                },
+                {
+                    $sort: {
+                        createdAt: -1,
+                    },
+                },
+                {
+                    $limit: 4,
+                },
+            ]);
+            const products = await cursor.toArray();
+            res.send(products);
+        });
+
+        // jwt
+        app.get("/jwt", async (req, res) => {
+            const email = req.query.email;
+            const user = await userCollection.findOne({ email: email });
+
+            if (user) {
+                const token = jwt.sign(
+                    { email },
+                    process.env.SECRET_ACCESS_TOKEN,
+                    { expiresIn: "1h" }
+                );
+                return res.send({ accessToken: token });
+            }
+
+            res.status(404).send({ message: "User not found!" });
+        });
+
+        // Save new user
+        app.post("/save-user", async (req, res) => {
+            const user = req.body;
+            const existedUser = await userCollection.findOne({
+                email: user.email,
+            });
+
+            if (existedUser) {
+                return res.send({ message: "User already exists" });
+            }
+
+            const result = await userCollection.insertOne({
+                ...user,
+                verified: false,
+                createdAt: new Date(),
+            });
+
+            res.send(result);
+        });
+
+        // get a user by email
+        app.get("/user", async (req, res) => {
+            const email = req.query.email;
+
+            const user = await userCollection.findOne({
+                email: email,
+            });
+
+            res.send(user);
+        });
+
+        // get sellers
+        app.get("/get-sellers", async (req, res) => {
+            const user = await userCollection
+                .find({
+                    userType: "seller",
+                })
+                .toArray();
+
+            res.send(user);
+        });
     } finally {
     }
 };
